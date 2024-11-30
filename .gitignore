@@ -1,0 +1,20 @@
+# Ignore object files
+*.o
+*.a
+*.lo
+*.lai
+
+# Ignore executables (including the .out file and QtApp)
+*.out
+QtApp
+*.exe
+
+# Ignore core dumps
+core
+*.core
+
+# Ignore backup files
+*~
+
+# Ignore temporary files
+.qmake.stash
