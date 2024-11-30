@@ -18,3 +18,10 @@ core
 
 # Ignore temporary files
 .qmake.stash
+
+# Ignore .vscode folder (Visual Studio Code settings)
+.vscode/
+
+# Ignore SQLite database files
+*.sqlite
+*.db
