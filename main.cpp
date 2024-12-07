@@ -9,36 +9,50 @@
 #include <QtSql/QSqlError>
 #include <QDebug>
 
-static void createTableAndInsertData(QSqlDatabase& db) {
-    // Create table and insert data into SQLite
+static void createUsersTableAndInsertData(QSqlDatabase& db) {
+    // Tworzenie tabeli USERS, jeśli nie istnieje, oraz dodanie przykładowych użytkowników
     QSqlQuery query(db);
 
-    // Create table if not exists
-    QString createTableSQL = "CREATE TABLE IF NOT EXISTS COMPANY ("
+    // Tworzenie tabeli USERS (z rolami: admin, user)
+    QString createTableSQL = "CREATE TABLE IF NOT EXISTS USERS ("
                              "ID INTEGER PRIMARY KEY AUTOINCREMENT, "
-                             "NAME TEXT NOT NULL, "
-                             "AGE INTEGER NOT NULL, "
-                             "ADDRESS TEXT, "
-                             "SALARY REAL)";
+                             "USERNAME TEXT NOT NULL UNIQUE, "
+                             "PASSWORD TEXT NOT NULL, "
+                             "ROLE TEXT NOT NULL)";
     if (!query.exec(createTableSQL)) {
         qDebug() << "Error creating table:" << query.lastError().text();
         return;
     }
 
-    // Insert sample data (no need to provide the ID field)
-    QString insertDataSQL = "INSERT INTO COMPANY (NAME, AGE, ADDRESS, SALARY) "
-                            "VALUES ('John Doe', 30, '123 Elm St', 50000)";
+    // Wstawianie przykładowych użytkowników
+    QString insertDataSQL = "INSERT INTO USERS (USERNAME, PASSWORD, ROLE) "
+                            "VALUES ('admin', 'admin123', 'admin'), "
+                            "('user', 'user123', 'user')";
     if (!query.exec(insertDataSQL)) {
         qDebug() << "Error inserting data:" << query.lastError().text();
     } else {
-        qDebug() << "Data inserted successfully!";
+        qDebug() << "Sample users inserted!";
     }
+}
+
+bool validateLogin(QSqlDatabase& db, const QString& username, const QString& password, QString& role) {
+    // Walidacja danych logowania
+    QSqlQuery query(db);
+    query.prepare("SELECT ROLE FROM USERS WHERE USERNAME = :username AND PASSWORD = :password");
+    query.bindValue(":username", username);
+    query.bindValue(":password", password);
+
+    if (query.exec() && query.next()) {
+        role = query.value(0).toString();  // Zapisujemy rolę użytkownika
+        return true;
+    }
+    return false;
 }
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
 
-    // Create SQLite database connection
+    // Połączenie z bazą danych SQLite
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
     db.setDatabaseName("test.db");
 
@@ -48,41 +62,66 @@ int main(int argc, char *argv[]) {
     }
     qDebug() << "Database opened successfully";
 
-    // Create table and insert sample data
-    createTableAndInsertData(db);
+    // Tworzenie tabeli użytkowników i dodanie przykładowych danych
+    createUsersTableAndInsertData(db);
 
-    // Create main window
-    QWidget window;
-    window.setWindowTitle("Simple Qt Application with SQLite");
+    // Tworzenie okna logowania
+    QWidget loginWindow;
+    loginWindow.setWindowTitle("Login");
 
-    // Create layout
-    QVBoxLayout *layout = new QVBoxLayout;
+    QVBoxLayout *loginLayout = new QVBoxLayout;
 
-    // Create QLineEdit for user input
-    QLineEdit *edit = new QLineEdit;
-    edit->setPlaceholderText("Enter text here...");
-    layout->addWidget(edit);
+    // Pola do wprowadzania nazwy użytkownika i hasła
+    QLineEdit *usernameEdit = new QLineEdit;
+    usernameEdit->setPlaceholderText("Username");
+    loginLayout->addWidget(usernameEdit);
 
-    // Create QPushButton to interact with database
-    QPushButton *button = new QPushButton("Show Data");
-    layout->addWidget(button);
+    QLineEdit *passwordEdit = new QLineEdit;
+    passwordEdit->setPlaceholderText("Password");
+    passwordEdit->setEchoMode(QLineEdit::Password);
+    loginLayout->addWidget(passwordEdit);
 
-    // Show database content when button is clicked
-    QObject::connect(button, &QPushButton::clicked, [&]() {
-        QSqlQuery query(db);
-        query.exec("SELECT * FROM COMPANY");
-        while (query.next()) {
-            QString name = query.value(1).toString();
-            int age = query.value(2).toInt();
-            QString address = query.value(3).toString();
-            double salary = query.value(4).toDouble();
-            qDebug() << "Name:" << name << ", Age:" << age << ", Address:" << address << ", Salary:" << salary;
+    QPushButton *loginButton = new QPushButton("Login");
+    loginLayout->addWidget(loginButton);
+
+    // Akcja po kliknięciu przycisku logowania
+    QObject::connect(loginButton, &QPushButton::clicked, [&]() {
+        QString username = usernameEdit->text();
+        QString password = passwordEdit->text();
+        QString role;
+
+        if (validateLogin(db, username, password, role)) {
+            QMessageBox::information(&loginWindow, "Login Successful", "Welcome " + username + "!");
+            
+            // W zależności od roli, otwieramy odpowiedni panel
+            if (role == "admin") {
+                // Okno administratora
+                QWidget adminWindow;
+                adminWindow.setWindowTitle("Admin Panel");
+
+                QVBoxLayout *adminLayout = new QVBoxLayout;
+                adminLayout->addWidget(new QPushButton("Admin Options"));
+                adminWindow.setLayout(adminLayout);
+                adminWindow.show();
+            } else if (role == "user") {
+                // Okno użytkownika
+                QWidget userWindow;
+                userWindow.setWindowTitle("User Panel");
+
+                QVBoxLayout *userLayout = new QVBoxLayout;
+                userLayout->addWidget(new QPushButton("User Options"));
+                userWindow.setLayout(userLayout);
+                userWindow.show();
+            }
+
+            loginWindow.close();  // Zamykamy okno logowania
+        } else {
+            QMessageBox::warning(&loginWindow, "Login Failed", "Invalid username or password.");
         }
     });
 
-    // Set layout and show window
-    window.setLayout(layout);
-    window.show();
+    loginWindow.setLayout(loginLayout);
+    loginWindow.show();
 
     return app.exec();
 }
