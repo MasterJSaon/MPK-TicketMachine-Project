@@ -21,6 +21,7 @@ core
 
 # Ignore .vscode folder (Visual Studio Code settings)
 .vscode/
+sqlite/
 
 # Ignore SQLite database files
 *.sqlite
