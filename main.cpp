@@ -27,7 +27,7 @@ static void createUsersTableAndInsertData(QSqlDatabase& db) {
     // Wstawianie przykładowych użytkowników
     QString insertDataSQL = "INSERT INTO USERS (USERNAME, PASSWORD, ROLE) "
                             "VALUES ('admin', 'admin123', 'admin'), "
-                            "('user', 'user123', 'user')";
+                            "('user', 'user123', 'user'), ('Jan', 'Janek123', 'user')";
     if (!query.exec(insertDataSQL)) {
         qDebug() << "Error inserting data:" << query.lastError().text();
     } else {
@@ -49,6 +49,34 @@ bool validateLogin(QSqlDatabase& db, const QString& username, const QString& pas
     return false;
 }
 
+void showAdminDashboard(QString user_name) {
+    // Admin dashboard window
+    QWidget* adminWindow = new QWidget();
+    adminWindow -> setWindowTitle("" + user_name + "'s Dashboard");
+
+    QVBoxLayout *adminLayout = new QVBoxLayout;
+    adminLayout->addWidget(new QPushButton("Manage Users"));
+    adminLayout->addWidget(new QPushButton("View Logs"));
+    adminLayout->addWidget(new QPushButton("Admin Settings"));
+    adminWindow->setLayout(adminLayout);
+    adminWindow->setFixedSize(300, 200);
+    adminWindow->show();
+}
+
+void showUserDashboard(QString user_name) {
+    // User dashboard window
+    QWidget* userWindow = new QWidget();
+    userWindow->setWindowTitle("" + user_name + "'s Dashboard");
+
+    QVBoxLayout *userLayout = new QVBoxLayout;
+    userLayout->addWidget(new QPushButton("View Profile"));
+    userLayout->addWidget(new QPushButton("Change Password"));
+    userLayout->addWidget(new QPushButton("User Settings"));
+    userWindow->setLayout(userLayout);
+    userWindow->setFixedSize(300, 200);
+    userWindow->show();
+}
+
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
 
@@ -66,22 +94,24 @@ int main(int argc, char *argv[]) {
     createUsersTableAndInsertData(db);
 
     // Tworzenie okna logowania
-    QWidget loginWindow;
-    loginWindow.setWindowTitle("Login");
+    QWidget* loginWindow = new QWidget();
+    loginWindow->setWindowTitle("Login");
+    loginWindow->setFixedWidth(400);
+    loginWindow->setFixedHeight(180);
 
-    QVBoxLayout *loginLayout = new QVBoxLayout;
+    QVBoxLayout* loginLayout = new QVBoxLayout;
 
     // Pola do wprowadzania nazwy użytkownika i hasła
-    QLineEdit *usernameEdit = new QLineEdit;
+    QLineEdit* usernameEdit = new QLineEdit;
     usernameEdit->setPlaceholderText("Username");
     loginLayout->addWidget(usernameEdit);
 
-    QLineEdit *passwordEdit = new QLineEdit;
+    QLineEdit* passwordEdit = new QLineEdit;
     passwordEdit->setPlaceholderText("Password");
     passwordEdit->setEchoMode(QLineEdit::Password);
     loginLayout->addWidget(passwordEdit);
 
-    QPushButton *loginButton = new QPushButton("Login");
+    QPushButton* loginButton = new QPushButton("Login");
     loginLayout->addWidget(loginButton);
 
     // Akcja po kliknięciu przycisku logowania
@@ -91,37 +121,23 @@ int main(int argc, char *argv[]) {
         QString role;
 
         if (validateLogin(db, username, password, role)) {
-            QMessageBox::information(&loginWindow, "Login Successful", "Welcome " + username + "!");
+            QMessageBox::information(loginWindow, "Login Successful", "Welcome " + username + "!");
             
-            // W zależności od roli, otwieramy odpowiedni panel
+            // W zależności od roli, otwieramy odpowiedni dashboard
             if (role == "admin") {
-                // Okno administratora
-                QWidget adminWindow;
-                adminWindow.setWindowTitle("Admin Panel");
-
-                QVBoxLayout *adminLayout = new QVBoxLayout;
-                adminLayout->addWidget(new QPushButton("Admin Options"));
-                adminWindow.setLayout(adminLayout);
-                adminWindow.show();
+                showAdminDashboard(username);  // Show Admin Dashboard
             } else if (role == "user") {
-                // Okno użytkownika
-                QWidget userWindow;
-                userWindow.setWindowTitle("User Panel");
-
-                QVBoxLayout *userLayout = new QVBoxLayout;
-                userLayout->addWidget(new QPushButton("User Options"));
-                userWindow.setLayout(userLayout);
-                userWindow.show();
+                showUserDashboard(username);  // Show User Dashboard
             }
 
-            loginWindow.close();  // Zamykamy okno logowania
+            loginWindow->close();  // Close the login window after successful login
         } else {
-            QMessageBox::warning(&loginWindow, "Login Failed", "Invalid username or password.");
+            QMessageBox::warning(loginWindow, "Login Failed", "Invalid username or password.");
         }
     });
 
-    loginWindow.setLayout(loginLayout);
-    loginWindow.show();
+    loginWindow->setLayout(loginLayout);
+    loginWindow->show();
 
-    return app.exec();
+    return app.exec();  // Keep the application running
 }

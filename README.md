@@ -2,6 +2,9 @@
 
 ## Project Building on Debian (C++ with Qt and SQLite)
 
+<!-- INFROM ABOUT THAT /sqlite folder exists in project -->
+<!-- IN Makefile add few lines to clean (delete trash files .stash) -->
+
 #### **Quick review**:
 - [Requirements: setting up environment step by step](#requirements)
 - [Setting up project](#project-setup)
@@ -16,7 +19,7 @@ Before building the project, make sure you have the following dependencies insta
 - **Qt** (for GUI development)
 - **SQLite3** (for database management)
 
-### Install Dependencies
+# Install Dependencies
 
 Follow the instructions below to install the necessary packages on Debian.
 
@@ -43,7 +46,7 @@ To work with SQLite in your project, you will need to install the SQLite3 develo
 
 This will install SQLite3 along with the necessary headers and libraries for compiling SQLite-based programs.
 
-## Project Setup
+# Project Setup
 
 ### Clone the Repository
 
@@ -79,6 +82,12 @@ This will grant the file execution permissions, allowing you to run it directly:
 `./run.sh`
 
 ## Future plans
-- admin ticket management, users etc.
-- Website with WASM for users to buy tickets
-- logic for user buying ticket
+- admin ticket management, users etc. - <strong>SOON</strong>
+- Website with WASM for users to buy tickets <strong>NOT SURE, if time allows</strong>
+- logic for user buying ticket - <strong>guess soon</strong>
+
+
+# Project Visual Changes
+### 1st after 7 commits
+- ![to 2024.12.12 (login panel)](https://cdn.discordapp.com/attachments/1148532194025938965/1316717641599160330/login_panel_showcase.png?ex=675c105d&is=675abedd&hm=beaee6129d51f9e135cdeda0c55a50fd05ca188a34b82f63d9ed2f72df410585&)
+- ![to 2024.12.12 (sample user dashboard)](https://cdn.discordapp.com/attachments/1148532194025938965/1316717641863532594/sample_dashboard_showcase.png?ex=675c105d&is=675abedd&hm=5fdcf6e7463faf0e3f4262b835201c3ae24f75bb8842af319f46a8f368f1057e&)
