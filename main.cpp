@@ -8,12 +8,10 @@
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlError>
 #include <QDebug>
+#include <QLabel>
 
 static void createUsersTableAndInsertData(QSqlDatabase& db) {
-    // Tworzenie tabeli USERS, jeśli nie istnieje, oraz dodanie przykładowych użytkowników
     QSqlQuery query(db);
-
-    // Tworzenie tabeli USERS (z rolami: admin, user)
     QString createTableSQL = "CREATE TABLE IF NOT EXISTS USERS ("
                              "ID INTEGER PRIMARY KEY AUTOINCREMENT, "
                              "USERNAME TEXT NOT NULL UNIQUE, "
@@ -24,7 +22,6 @@ static void createUsersTableAndInsertData(QSqlDatabase& db) {
         return;
     }
 
-    // Wstawianie przykładowych użytkowników
     QString insertDataSQL = "INSERT INTO USERS (USERNAME, PASSWORD, ROLE) "
                             "VALUES ('admin', 'admin123', 'admin'), "
                             "('user', 'user123', 'user'), ('Jan', 'Janek123', 'user')";
@@ -36,37 +33,66 @@ static void createUsersTableAndInsertData(QSqlDatabase& db) {
 }
 
 bool validateLogin(QSqlDatabase& db, const QString& username, const QString& password, QString& role) {
-    // Walidacja danych logowania
     QSqlQuery query(db);
     query.prepare("SELECT ROLE FROM USERS WHERE USERNAME = :username AND PASSWORD = :password");
     query.bindValue(":username", username);
     query.bindValue(":password", password);
 
     if (query.exec() && query.next()) {
-        role = query.value(0).toString();  // Zapisujemy rolę użytkownika
+        role = query.value(0).toString();
         return true;
     }
     return false;
 }
 
-void showAdminDashboard(QString user_name) {
-    // Admin dashboard window
+void showAdminDashboard(QString user_name, QSqlDatabase& db) {
     QWidget* adminWindow = new QWidget();
-    adminWindow -> setWindowTitle("" + user_name + "'s Dashboard");
+    adminWindow->setWindowTitle(user_name + "'s Dashboard");
 
     QVBoxLayout *adminLayout = new QVBoxLayout;
-    adminLayout->addWidget(new QPushButton("Manage Users"));
-    adminLayout->addWidget(new QPushButton("View Logs"));
-    adminLayout->addWidget(new QPushButton("Admin Settings"));
+    QPushButton* manageUsersButton = new QPushButton("Manage Users");
+    QPushButton* viewLogsButton = new QPushButton("View Logs");
+    QPushButton* adminSettingsButton = new QPushButton("Admin Settings");
+
+    // Add button to display users' data
+    QPushButton* displayDataButton = new QPushButton("Display All Users Data");
+    QObject::connect(displayDataButton, &QPushButton::clicked, [adminWindow, &db]() {
+        // Query the database and display data
+        QSqlQuery query(db);
+        if (!db.isOpen()) {
+            QMessageBox::warning(adminWindow, "Database Error", "Database connection is not open.");
+            return;
+        }
+
+        query.prepare("SELECT * FROM USERS");
+        if (!query.exec()) {
+            QMessageBox::warning(adminWindow, "Query Error", query.lastError().text());
+            return;
+        }
+
+        QString data = "Users Data:\n";
+        while (query.next()) {
+            int id = query.value(0).toInt();
+            QString username = query.value(1).toString();
+            QString role = query.value(2).toString();
+            data += QString("ID: %1, Username: %2, Role: %3\n").arg(id).arg(username).arg(role);
+        }
+
+        QMessageBox::information(adminWindow, "Users Data", data);
+    });
+
+    adminLayout->addWidget(manageUsersButton);
+    adminLayout->addWidget(viewLogsButton);
+    adminLayout->addWidget(adminSettingsButton);
+    adminLayout->addWidget(displayDataButton);
     adminWindow->setLayout(adminLayout);
-    adminWindow->setFixedSize(300, 200);
+    adminWindow->setFixedSize(300, 300);
     adminWindow->show();
 }
 
 void showUserDashboard(QString user_name) {
-    // User dashboard window
     QWidget* userWindow = new QWidget();
-    userWindow->setWindowTitle("" + user_name + "'s Dashboard");
+    userWindow->setWindowTitle(user_name + "'s Dashboard");
 
     QVBoxLayout *userLayout = new QVBoxLayout;
     userLayout->addWidget(new QPushButton("View Profile"));
@@ -80,7 +106,7 @@ void showUserDashboard(QString user_name) {
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
 
-    // Połączenie z bazą danych SQLite
+    // Connect to the database
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
     db.setDatabaseName("test.db");
 
@@ -90,18 +116,16 @@ int main(int argc, char *argv[]) {
     }
     qDebug() << "Database opened successfully";
 
-    // Tworzenie tabeli użytkowników i dodanie przykładowych danych
+    // Create table and insert sample data
     createUsersTableAndInsertData(db);
 
-    // Tworzenie okna logowania
+    // Create login window
     QWidget* loginWindow = new QWidget();
     loginWindow->setWindowTitle("Login");
     loginWindow->setFixedWidth(400);
     loginWindow->setFixedHeight(180);
 
     QVBoxLayout* loginLayout = new QVBoxLayout;
-
-    // Pola do wprowadzania nazwy użytkownika i hasła
     QLineEdit* usernameEdit = new QLineEdit;
     usernameEdit->setPlaceholderText("Username");
     loginLayout->addWidget(usernameEdit);
@@ -114,27 +138,32 @@ int main(int argc, char *argv[]) {
     QPushButton* loginButton = new QPushButton("Login");
     loginLayout->addWidget(loginButton);
 
-    // Akcja po kliknięciu przycisku logowania
-    QObject::connect(loginButton, &QPushButton::clicked, [&]() {
+    // Function to handle login validation
+    auto tryLogin = [&]() {
         QString username = usernameEdit->text();
         QString password = passwordEdit->text();
         QString role;
 
         if (validateLogin(db, username, password, role)) {
-            QMessageBox::information(loginWindow, "Login Successful", "Welcome " + username + "!");
-            
-            // W zależności od roli, otwieramy odpowiedni dashboard
+            // Show dashboard based on role
             if (role == "admin") {
-                showAdminDashboard(username);  // Show Admin Dashboard
+                showAdminDashboard(username, db);  // Show Admin Dashboard with display data button
             } else if (role == "user") {
                 showUserDashboard(username);  // Show User Dashboard
             }
 
-            loginWindow->close();  // Close the login window after successful login
+            loginWindow->close();  // Close login window
         } else {
             QMessageBox::warning(loginWindow, "Login Failed", "Invalid username or password.");
         }
-    });
+    };
+
+    // Handle login action on button click
+    QObject::connect(loginButton, &QPushButton::clicked, tryLogin);
+
+    // Detect Enter key press on username or password field
+    QObject::connect(usernameEdit, &QLineEdit::returnPressed, tryLogin);
+    QObject::connect(passwordEdit, &QLineEdit::returnPressed, tryLogin);
 
     loginWindow->setLayout(loginLayout);
     loginWindow->show();
