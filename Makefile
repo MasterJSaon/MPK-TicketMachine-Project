@@ -322,12 +322,11 @@ clean: compiler_clean
 	-$(DEL_FILE) $(OBJECTS)
 	-$(DEL_FILE) *~ core *.core
 
-
 distclean: clean 
 	-$(DEL_FILE) $(TARGET) 
 	-$(DEL_FILE) .qmake.stash
 	-$(DEL_FILE) Makefile
-
+	-$(DEL_FILE) .swm
 
 ####### Sub-libraries
 
