@@ -28,4 +28,4 @@ sqlite/
 *.db
 
 # no idea what that files do
-*.swm
+*.sw*

@@ -326,7 +326,7 @@ distclean: clean
 	-$(DEL_FILE) $(TARGET) 
 	-$(DEL_FILE) .qmake.stash
 	-$(DEL_FILE) Makefile
-	-$(DEL_FILE) .swm
+	-$(DEL_FILE) .sw*
 
 ####### Sub-libraries
 
