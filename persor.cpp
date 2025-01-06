@@ -10,17 +10,30 @@
 #include <QtSql/QSqlError>
 #include <QDebug>
 #include <QLabel>
+#include <QKeyEvent>
 
+class CustomWidget : public QWidget {
+    Q_OBJECT
+public:
+    CustomWidget(QWidget *parent = nullptr) : QWidget(parent) {}
+
+protected:
+    void keyPressEvent(QKeyEvent *event) override {
+        emit keyPressed(event);
+    }
+
+signals:
+    void keyPressed(QKeyEvent *event);
+};
 
 class User {
-     private:
-	     
-     public:
-	User(const QString &user_name);
+private:
+public:
+    User(const QString &user_name);
 };
 
 User::User(const QString &user_name) {
-    QWidget* userWindow = new QWidget();
+    CustomWidget* userWindow = new CustomWidget();
     userWindow->setWindowTitle(user_name + "'s Dashboard");
 
     QVBoxLayout *userLayout = new QVBoxLayout;
@@ -37,9 +50,9 @@ User::User(const QString &user_name) {
         // Action for viewing profile
         QMessageBox::information(userWindow, "Profile", "Viewing Profile...");
     });
-    
+
     // Detect Enter key press
-    QObject::connect(userWindow, &QWidget::keyPressEvent, [viewProfileButton](QKeyEvent *event) {
+    QObject::connect(userWindow, &CustomWidget::keyPressed, [viewProfileButton](QKeyEvent *event) {
         if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
             viewProfileButton->click();
         }
@@ -47,15 +60,13 @@ User::User(const QString &user_name) {
 }
 
 class Admin {
-     private:
-	     
-     public:
-	Admin(const QString &user_name, QSqlDatabase &db);	
+private:
+public:
+    Admin(const QString &user_name, QSqlDatabase &db);
 };
 
-
-Admin::Admin (const QString &user_name, QSqlDatabase &db) {
-    QWidget* adminWindow = new QWidget();
+Admin::Admin(const QString &user_name, QSqlDatabase &db) {
+    CustomWidget* adminWindow = new CustomWidget();
     adminWindow->setWindowTitle(user_name + "'s Dashboard");
 
     QVBoxLayout *adminLayout = new QVBoxLayout;
@@ -76,7 +87,7 @@ Admin::Admin (const QString &user_name, QSqlDatabase &db) {
     });
 
     // Detect Enter key press
-    QObject::connect(adminWindow, &QWidget::keyPressEvent, [manageUsersButton](QKeyEvent *event) {
+    QObject::connect(adminWindow, &CustomWidget::keyPressed, [manageUsersButton](QKeyEvent *event) {
         if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
             manageUsersButton->click();
         }
