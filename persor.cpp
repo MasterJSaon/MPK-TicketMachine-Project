@@ -41,6 +41,11 @@ User::User(const QString &user_name) {
     userLayout->addWidget(viewProfileButton);
     userLayout->addWidget(new QPushButton("Change Password"));
     userLayout->addWidget(new QPushButton("User Settings"));
+
+    // Add Logout Button
+    QPushButton* logoutButton = new QPushButton("Logout");
+    userLayout->addWidget(logoutButton);
+
     userWindow->setLayout(userLayout);
     userWindow->setFixedSize(300, 200);
     userWindow->show();
@@ -57,15 +62,22 @@ User::User(const QString &user_name) {
             viewProfileButton->click();
         }
     });
+
+    // Handle Logout action
+    QObject::connect(logoutButton, &QPushButton::clicked, [userWindow, loginWindow]() {
+        userWindow->close();  // Close the user dashboard
+        loginWindow->show();  // Show the login window again
+    });
 }
 
 class Admin {
-private:
 public:
     Admin(const QString &user_name, QSqlDatabase &db);
 };
 
 Admin::Admin(const QString &user_name, QSqlDatabase &db) {
+    Q_UNUSED(db);  // Suppress unused parameter warning
+
     CustomWidget* adminWindow = new CustomWidget();
     adminWindow->setWindowTitle(user_name + "'s Dashboard");
 
@@ -74,6 +86,11 @@ Admin::Admin(const QString &user_name, QSqlDatabase &db) {
     adminLayout->addWidget(manageUsersButton);
     adminLayout->addWidget(new QPushButton("View Logs"));
     adminLayout->addWidget(new QPushButton("Admin Settings"));
+
+    // Add Logout Button
+    QPushButton* logoutButton = new QPushButton("Logout");
+    adminLayout->addWidget(logoutButton);
+
     QPushButton* displayDataButton = new QPushButton("Display All Users Data");
     adminLayout->addWidget(displayDataButton);
     adminWindow->setLayout(adminLayout);
@@ -91,5 +108,11 @@ Admin::Admin(const QString &user_name, QSqlDatabase &db) {
         if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
             manageUsersButton->click();
         }
+    });
+
+    // Handle Logout action
+    QObject::connect(logoutButton, &QPushButton::clicked, [adminWindow, loginWindow]() {
+        adminWindow->close();  // Close the admin dashboard
+        loginWindow->show();  // Show the login window again
     });
 }
