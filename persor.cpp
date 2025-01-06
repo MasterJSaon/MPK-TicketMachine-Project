@@ -29,10 +29,10 @@ signals:
 class User {
 private:
 public:
-    User(const QString &user_name);
+    User(const QString &user_name, QWidget *loginWindow);
 };
 
-User::User(const QString &user_name) {
+User::User(const QString &user_name, QWidget *loginWindow) {
     CustomWidget* userWindow = new CustomWidget();
     userWindow->setWindowTitle(user_name + "'s Dashboard");
 
@@ -72,10 +72,10 @@ User::User(const QString &user_name) {
 
 class Admin {
 public:
-    Admin(const QString &user_name, QSqlDatabase &db);
+    Admin(const QString &user_name, QSqlDatabase &db, QWidget *loginWindow);
 };
 
-Admin::Admin(const QString &user_name, QSqlDatabase &db) {
+Admin::Admin(const QString &user_name, QSqlDatabase &db, QWidget *loginWindow) {
     Q_UNUSED(db);  // Suppress unused parameter warning
 
     CustomWidget* adminWindow = new CustomWidget();

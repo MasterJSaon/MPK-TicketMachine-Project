@@ -35,13 +35,12 @@ bool validateLogin(QSqlDatabase& db, const QString& username, const QString& pas
     return false;
 }
 
-void showAdminDashboard(QString user_name, QSqlDatabase& db) {
-	Admin ppp (user_name + "'s dashboard", db);    
+void showAdminDashboard(QString user_name, QSqlDatabase& db, QWidget* loginWindow) {
+    Admin ppp(user_name + "'s dashboard", db, loginWindow);    
 }
 
-void showUserDashboard(QString user_name) {
-	// acces db to user for simple user usage HERE
-	User uuu (user_name + "'s dashboard");
+void showUserDashboard(QString user_name, QWidget* loginWindow) {
+    User uuu(user_name + "'s dashboard", loginWindow);
 }
 
 int main(int argc, char *argv[]) {
@@ -88,9 +87,9 @@ int main(int argc, char *argv[]) {
         if (validateLogin(db, username, password, role)) {
             // Show dashboard based on role
             if (role == "admin") {
-                showAdminDashboard(username, db);  // Show Admin Dashboard with display data button
+                showAdminDashboard(username, db, loginWindow);  // Show Admin Dashboard with display data button
             } else if (role == "user") {
-                showUserDashboard(username);  // Show User Dashboard
+                showUserDashboard(username, loginWindow);  // Show User Dashboard
             }
 
             loginWindow->close();  // Close login window
