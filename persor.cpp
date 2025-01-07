@@ -10,109 +10,78 @@
 #include <QtSql/QSqlError>
 #include <QDebug>
 #include <QLabel>
-#include <QKeyEvent>
 
-class CustomWidget : public QWidget {
-    Q_OBJECT
-public:
-    CustomWidget(QWidget *parent = nullptr) : QWidget(parent) {}
-
-protected:
-    void keyPressEvent(QKeyEvent *event) override {
-        emit keyPressed(event);
-    }
-
-signals:
-    void keyPressed(QKeyEvent *event);
-};
 
 class User {
-private:
-public:
-    User(const QString &user_name, QWidget *loginWindow);
+     private:
+	     
+     public:
+	User(const QString &user_name);
 };
 
-User::User(const QString &user_name, QWidget *loginWindow) {
-    CustomWidget* userWindow = new CustomWidget();
+User::User(const QString &user_name) {
+    QWidget* userWindow = new QWidget();
     userWindow->setWindowTitle(user_name + "'s Dashboard");
 
     QVBoxLayout *userLayout = new QVBoxLayout;
-    QPushButton* viewProfileButton = new QPushButton("View Profile");
-    userLayout->addWidget(viewProfileButton);
+    userLayout->addWidget(new QPushButton("View Profile"));
     userLayout->addWidget(new QPushButton("Change Password"));
     userLayout->addWidget(new QPushButton("User Settings"));
-
-    // Add Logout Button
-    QPushButton* logoutButton = new QPushButton("Logout");
-    userLayout->addWidget(logoutButton);
-
     userWindow->setLayout(userLayout);
     userWindow->setFixedSize(300, 200);
     userWindow->show();
 
-    // Connect Enter key to View Profile button
-    QObject::connect(viewProfileButton, &QPushButton::clicked, [userWindow]() {
-        // Action for viewing profile
-        QMessageBox::information(userWindow, "Profile", "Viewing Profile...");
-    });
-
-    // Detect Enter key press
-    QObject::connect(userWindow, &CustomWidget::keyPressed, [viewProfileButton](QKeyEvent *event) {
-        if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
-            viewProfileButton->click();
-        }
-    });
-
-    // Handle Logout action
-    QObject::connect(logoutButton, &QPushButton::clicked, [userWindow, loginWindow]() {
-        userWindow->close();  // Close the user dashboard
-        loginWindow->show();  // Show the login window again
-    });
 }
 
 class Admin {
-public:
-    Admin(const QString &user_name, QSqlDatabase &db, QWidget *loginWindow);
+     private:
+	     
+     public:
+	Admin(const QString &user_name, QSqlDatabase &db);	
 };
 
-Admin::Admin(const QString &user_name, QSqlDatabase &db, QWidget *loginWindow) {
-    Q_UNUSED(db);  // Suppress unused parameter warning
 
-    CustomWidget* adminWindow = new CustomWidget();
+Admin::Admin (const QString &user_name, QSqlDatabase &db) {
+    QWidget* adminWindow = new QWidget();
     adminWindow->setWindowTitle(user_name + "'s Dashboard");
 
     QVBoxLayout *adminLayout = new QVBoxLayout;
     QPushButton* manageUsersButton = new QPushButton("Manage Users");
-    adminLayout->addWidget(manageUsersButton);
-    adminLayout->addWidget(new QPushButton("View Logs"));
-    adminLayout->addWidget(new QPushButton("Admin Settings"));
+    QPushButton* viewLogsButton = new QPushButton("View Logs");
+    QPushButton* adminSettingsButton = new QPushButton("Admin Settings");
 
-    // Add Logout Button
-    QPushButton* logoutButton = new QPushButton("Logout");
-    adminLayout->addWidget(logoutButton);
-
+    // Add button to display users' data
     QPushButton* displayDataButton = new QPushButton("Display All Users Data");
+    QObject::connect(displayDataButton, &QPushButton::clicked, [adminWindow, &db]() {
+        // Query the database and display data
+        QSqlQuery query(db);
+        if (!db.isOpen()) {
+            QMessageBox::warning(adminWindow, "Database Error", "Database connection is not open.");
+            return;
+        }
+
+        query.prepare("SELECT * FROM USERS");
+        if (!query.exec()) {
+            QMessageBox::warning(adminWindow, "Query Error", query.lastError().text());
+            return;
+        }
+
+        QString data = "Users Data:\n";
+        while (query.next()) {
+            int id = query.value(0).toInt();
+            QString username = query.value(1).toString();
+            QString role = query.value(2).toString();
+            data += QString("ID: %1, Username: %2, Role: %3\n").arg(id).arg(username).arg(role);
+        }
+
+        QMessageBox::information(adminWindow, "Users Data", data);
+    });
+
+    adminLayout->addWidget(manageUsersButton);
+    adminLayout->addWidget(viewLogsButton);
+    adminLayout->addWidget(adminSettingsButton);
     adminLayout->addWidget(displayDataButton);
     adminWindow->setLayout(adminLayout);
     adminWindow->setFixedSize(300, 300);
     adminWindow->show();
-
-    // Connect Enter key to Manage Users button
-    QObject::connect(manageUsersButton, &QPushButton::clicked, [adminWindow]() {
-        // Action for managing users
-        QMessageBox::information(adminWindow, "Manage Users", "Managing Users...");
-    });
-
-    // Detect Enter key press
-    QObject::connect(adminWindow, &CustomWidget::keyPressed, [manageUsersButton](QKeyEvent *event) {
-        if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
-            manageUsersButton->click();
-        }
-    });
-
-    // Handle Logout action
-    QObject::connect(logoutButton, &QPushButton::clicked, [adminWindow, loginWindow]() {
-        adminWindow->close();  // Close the admin dashboard
-        loginWindow->show();  // Show the login window again
-    });
 }
