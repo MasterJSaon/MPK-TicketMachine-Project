@@ -40,6 +40,16 @@ User::User(const QString &user_name, QSqlDatabase& db) {
     QPushButton *myTicketsButton = new QPushButton("My Tickets");
     QPushButton *logoutButton = new QPushButton("Logout");
 
+    // Set tab order for keyboard navigation
+    viewProfileButton->setFocusPolicy(Qt::StrongFocus);
+    buyTicketButton->setFocusPolicy(Qt::StrongFocus);
+    myTicketsButton->setFocusPolicy(Qt::StrongFocus);
+    logoutButton->setFocusPolicy(Qt::StrongFocus);
+
+    userWindow->setTabOrder(viewProfileButton, buyTicketButton);
+    userWindow->setTabOrder(buyTicketButton, myTicketsButton);
+    userWindow->setTabOrder(myTicketsButton, logoutButton);
+
     // Add the buttons to the layout
     userLayout->addWidget(viewProfileButton);
     userLayout->addWidget(buyTicketButton);
@@ -93,16 +103,19 @@ User::User(const QString &user_name, QSqlDatabase& db) {
         dialogLayout->addWidget(dateLabel);
         dialogLayout->addWidget(dateEdit);
 
-        // Confirm Button
+        // Add horizontal layout for buttons
+        QHBoxLayout* buttonLayout = new QHBoxLayout();
         QPushButton* confirmButton = new QPushButton("Confirm Purchase");
-        dialogLayout->addWidget(confirmButton);
-        // QPushButton* cancelButton = new QPushButton("Cancel");
-        // dialogLayout->addWidget(cancelButton);
+        QPushButton* cancelButton = new QPushButton("Cancel");
+        buttonLayout->addWidget(confirmButton);
+        buttonLayout->addWidget(cancelButton);
+        dialogLayout->addLayout(buttonLayout);
 
-        // QObject::connect(confirmButton, &QPushButton::clicked, [this, buyTicketDialog] () {
-            // buyTicketDialog->cancel();
-        // });
-            
+        // Set tab order
+        confirmButton->setFocusPolicy(Qt::StrongFocus);
+        cancelButton->setFocusPolicy(Qt::StrongFocus);
+        
+        QObject::connect(cancelButton, &QPushButton::clicked, buyTicketDialog, &QDialog::reject);
 
         // Connect confirm button
         QObject::connect(confirmButton, &QPushButton::clicked, [this, buyTicketDialog, durationComboBox, typeComboBox, dateEdit, user_name_cpy, db]() {
@@ -221,42 +234,108 @@ Admin::Admin (const QString &user_name, QSqlDatabase &db) {
     adminWindow->setWindowTitle(user_name + "'s Dashboard");
 
     QVBoxLayout *adminLayout = new QVBoxLayout;
+    
+    // Add new buttons and modify existing ones
     QPushButton* manageUsersButton = new QPushButton("Manage Users");
     QPushButton* viewLogsButton = new QPushButton("View Logs");
-    QPushButton* adminSettingsButton = new QPushButton("Admin Settings");
-
-    // Add button to display users' data
+    QPushButton* ticketManagementButton = new QPushButton("Ticket Management");
     QPushButton* displayDataButton = new QPushButton("Display All Users Data");
-    QObject::connect(displayDataButton, &QPushButton::clicked, [adminWindow, &db]() {
-        // Query the database and display data
+    QPushButton* systemStatsButton = new QPushButton("System Statistics");
+    QPushButton* logoutButton = new QPushButton("Logout");
+
+    // Set tab order for keyboard navigation
+    manageUsersButton->setFocusPolicy(Qt::StrongFocus);
+    viewLogsButton->setFocusPolicy(Qt::StrongFocus);
+    ticketManagementButton->setFocusPolicy(Qt::StrongFocus);
+    displayDataButton->setFocusPolicy(Qt::StrongFocus);
+    systemStatsButton->setFocusPolicy(Qt::StrongFocus);
+    logoutButton->setFocusPolicy(Qt::StrongFocus);
+
+    adminWindow->setTabOrder(manageUsersButton, viewLogsButton);
+    adminWindow->setTabOrder(viewLogsButton, ticketManagementButton);
+    adminWindow->setTabOrder(ticketManagementButton, displayDataButton);
+    adminWindow->setTabOrder(displayDataButton, systemStatsButton);
+    adminWindow->setTabOrder(systemStatsButton, logoutButton);
+
+    // Add new ticket management functionality
+    QObject::connect(ticketManagementButton, &QPushButton::clicked, [adminWindow, &db]() {
+        QDialog* ticketManageDialog = new QDialog(adminWindow);
+        ticketManageDialog->setWindowTitle("Ticket Management");
+        QVBoxLayout* dialogLayout = new QVBoxLayout(ticketManageDialog);
+
+        QPushButton* viewAllTicketsBtn = new QPushButton("View All Active Tickets");
+        QPushButton* modifyPricingBtn = new QPushButton("Modify Ticket Pricing");
+        QPushButton* addTicketTypeBtn = new QPushButton("Add New Ticket Type");
+        QPushButton* cancelBtn = new QPushButton("Close");
+
+        dialogLayout->addWidget(viewAllTicketsBtn);
+        dialogLayout->addWidget(modifyPricingBtn);
+        dialogLayout->addWidget(addTicketTypeBtn);
+        dialogLayout->addWidget(cancelBtn);
+
+        // Set tab order
+        viewAllTicketsBtn->setFocusPolicy(Qt::StrongFocus);
+        modifyPricingBtn->setFocusPolicy(Qt::StrongFocus);
+        addTicketTypeBtn->setFocusPolicy(Qt::StrongFocus);
+        cancelBtn->setFocusPolicy(Qt::StrongFocus);
+
+        QObject::connect(viewAllTicketsBtn, &QPushButton::clicked, [&db, ticketManageDialog]() {
+            QSqlQuery query(db);
+            query.exec("SELECT COUNT(*) FROM TICKETS");
+            query.next();
+            int ticketCount = query.value(0).toInt();
+            
+            QString message = QString("Total active tickets: %1\n").arg(ticketCount);
+            QMessageBox::information(ticketManageDialog, "Ticket Statistics", message);
+        });
+
+        QObject::connect(cancelBtn, &QPushButton::clicked, ticketManageDialog, &QDialog::accept);
+
+        ticketManageDialog->exec();
+    });
+
+    // Add system statistics functionality
+    QObject::connect(systemStatsButton, &QPushButton::clicked, [adminWindow, &db]() {
         QSqlQuery query(db);
-        if (!db.isOpen()) {
-            QMessageBox::warning(adminWindow, "Database Error", "Database connection is not open.");
-            return;
-        }
+        
+        // Get user count
+        query.exec("SELECT COUNT(*) FROM USERS");
+        query.next();
+        int userCount = query.value(0).toInt();
 
-        query.prepare("SELECT * FROM USERS");
-        if (!query.exec()) {
-            QMessageBox::warning(adminWindow, "Query Error", query.lastError().text());
-            return;
-        }
+        // Get ticket count
+        query.exec("SELECT COUNT(*) FROM TICKETS");
+        query.next();
+        int ticketCount = query.value(0).toInt();
 
-        QString data = "Users Data:\n";
-        while (query.next()) {
-            int id = query.value(0).toInt();
-            QString username = query.value(1).toString();
-            QString role = query.value(2).toString();
-            data += QString("ID: %1, Username: %2, Role: %3\n").arg(id).arg(username).arg(role);
-        }
+        QString stats = QString("System Statistics:\n\n"
+                              "Total Users: %1\n"
+                              "Total Active Tickets: %2\n"
+                              "System Version: 1.0.0\n"
+                              "Database Status: Connected").arg(userCount).arg(ticketCount);
 
-        QMessageBox::information(adminWindow, "Users Data", data);
+        QMessageBox::information(adminWindow, "System Statistics", stats);
+    });
+
+    // Add logout functionality
+    QObject::connect(logoutButton, &QPushButton::clicked, [adminWindow]() {
+        QMessageBox::StandardButton reply;
+        reply = QMessageBox::question(adminWindow, "Logout", "Are you sure you want to logout?",
+                                    QMessageBox::Yes | QMessageBox::No);
+        
+        if (reply == QMessageBox::Yes) {
+            adminWindow->close();
+        }
     });
 
     adminLayout->addWidget(manageUsersButton);
     adminLayout->addWidget(viewLogsButton);
-    adminLayout->addWidget(adminSettingsButton);
+    adminLayout->addWidget(ticketManagementButton);
     adminLayout->addWidget(displayDataButton);
+    adminLayout->addWidget(systemStatsButton);
+    adminLayout->addWidget(logoutButton);
+
     adminWindow->setLayout(adminLayout);
-    adminWindow->setFixedSize(300, 300);
+    adminWindow->setFixedSize(300, 400);  // Increased height for new buttons
     adminWindow->show();
 }
