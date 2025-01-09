@@ -164,23 +164,26 @@ int main(int argc, char *argv[]) {
 
     // Sign Up window logic
     QObject::connect(signUpButton, &QPushButton::clicked, [&]() {
-        // Create SignUp window as a regular QWidget (not QScopedPointer)
         QWidget* signUpWindow = new QWidget();
         signUpWindow->setWindowTitle("Sign Up");
         signUpWindow->setFixedWidth(400);
-        signUpWindow->setFixedHeight(240);
+        signUpWindow->setFixedHeight(300);  // Increased height for new fields
 
         QVBoxLayout* signUpLayout = new QVBoxLayout;
 
-        // Dynamically allocate QLineEdit objects
         QLineEdit* newUsernameEdit = new QLineEdit;
-        newUsernameEdit->setPlaceholderText("New Username");
+        newUsernameEdit->setPlaceholderText("New Username (3-20 characters)");
         signUpLayout->addWidget(newUsernameEdit);
 
         QLineEdit* newPasswordEdit = new QLineEdit;
-        newPasswordEdit->setPlaceholderText("New Password");
+        newPasswordEdit->setPlaceholderText("New Password (min 6 characters)");
         newPasswordEdit->setEchoMode(QLineEdit::Password);
         signUpLayout->addWidget(newPasswordEdit);
+
+        QLineEdit* confirmPasswordEdit = new QLineEdit;
+        confirmPasswordEdit->setPlaceholderText("Confirm Password");
+        confirmPasswordEdit->setEchoMode(QLineEdit::Password);
+        signUpLayout->addWidget(confirmPasswordEdit);
 
         QPushButton* signUpSubmitButton = new QPushButton("Submit");
         signUpLayout->addWidget(signUpSubmitButton);
@@ -188,27 +191,69 @@ int main(int argc, char *argv[]) {
         QPushButton* cancelSubmitButton = new QPushButton("Cancel");
         signUpLayout->addWidget(cancelSubmitButton);
         
-        QObject::connect(cancelSubmitButton, &QPushButton::clicked, [&]() {
-            signUpWindow->close();  // Close the Sign Up window
+        // Add validation function
+        auto validateSignUp = [](const QString& username, const QString& password, const QString& confirmPass) -> QString {
+            if (username.length() < 3 || username.length() > 20) {
+                return "Username must be between 3 and 20 characters.";
+            }
+            
+            // Check username for valid characters (letters, numbers, underscore)
+            QRegExp usernameRegex("^[a-zA-Z0-9_]+$");
+            if (!usernameRegex.exactMatch(username)) {
+                return "Username can only contain letters, numbers, and underscores.";
+            }
+
+            if (password.length() < 6) {
+                return "Password must be at least 6 characters long.";
+            }
+
+            if (password != confirmPass) {
+                return "Passwords do not match.";
+            }
+
+            return QString(); // Empty string means validation passed
+        };
+
+        QObject::connect(cancelSubmitButton, &QPushButton::clicked, [signUpWindow, loginWindow]() {
+            signUpWindow->deleteLater();  // Properly delete the window
             loginWindow->show();
         });
-        // Sign Up submit action
-        QObject::connect(signUpSubmitButton, &QPushButton::clicked, [&]() {
+
+        QObject::connect(signUpSubmitButton, &QPushButton::clicked, [=, &db]() {
             QString newUsername = newUsernameEdit->text();
             QString newPassword = newPasswordEdit->text();
+            QString confirmPassword = confirmPasswordEdit->text();
 
-            if (!newUsername.isEmpty() && !newPassword.isEmpty()) {
-                insertNewUser(db, newUsername, newPassword);
-                signUpWindow->close();  // Close the Sign Up window
-                loginWindow->show();    // Show the login window after sign up
-            } else {
-                QMessageBox::warning(signUpWindow, "Sign Up Failed", "Please fill in all fields.");
+            // Validate input
+            QString validationError = validateSignUp(newUsername, newPassword, confirmPassword);
+            
+            if (!validationError.isEmpty()) {
+                QMessageBox::warning(signUpWindow, "Sign Up Failed", validationError);
+                return;
             }
+
+            // Check if username already exists
+            QSqlQuery checkQuery(db);
+            checkQuery.prepare("SELECT COUNT(*) FROM USERS WHERE USERNAME = ?");
+            checkQuery.addBindValue(newUsername);
+            
+            if (checkQuery.exec() && checkQuery.next()) {
+                if (checkQuery.value(0).toInt() > 0) {
+                    QMessageBox::warning(signUpWindow, "Sign Up Failed", "Username already exists.");
+                    return;
+                }
+            }
+
+            // If all validation passes, insert the new user
+            insertNewUser(db, newUsername, newPassword);
+            QMessageBox::information(signUpWindow, "Success", "Account created successfully!");
+            signUpWindow->deleteLater();  // Properly delete the window
+            loginWindow->show();
         });
 
         signUpWindow->setLayout(signUpLayout);
         signUpWindow->show();
-        loginWindow->close();  // Close login window when opening sign up window
+        loginWindow->close();
     });
 
     QObject::connect(usernameEdit, &QLineEdit::returnPressed, tryLogin);
