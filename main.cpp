@@ -2,24 +2,87 @@
 
 static void createUsersTableAndInsertData(QSqlDatabase& db) {
     QSqlQuery query(db);
-    QString createTableSQL = "CREATE TABLE IF NOT EXISTS USERS ("
-                             "ID INTEGER PRIMARY KEY AUTOINCREMENT, "
-                             "USERNAME TEXT NOT NULL UNIQUE, "
-                             "PASSWORD TEXT NOT NULL, "
-                             "ROLE TEXT NOT NULL)";
-    if (!query.exec(createTableSQL)) {
-        qDebug() << "Error creating table:" << query.lastError().text();
+
+    // Create the USERS table if it doesn't exist
+    QString createUsersTableSQL = "CREATE TABLE IF NOT EXISTS USERS ("
+                                  "ID INTEGER PRIMARY KEY AUTOINCREMENT, "
+                                  "USERNAME TEXT NOT NULL UNIQUE, "
+                                  "PASSWORD TEXT NOT NULL, "
+                                  "ROLE TEXT NOT NULL)";
+    if (!query.exec(createUsersTableSQL)) {
+        qDebug() << "Error creating USERS table:" << query.lastError().text();
         return;
     }
 	
-    QString insertDataSQL = "INSERT INTO USERS (USERNAME, PASSWORD, ROLE) "
-                            "VALUES ('admin', 'admin123', 'admin'), "
-                            "('user', 'user123', 'user'), ('Jan', 'Janek123', 'user')";
-    if (!query.exec(insertDataSQL)) {
-        qDebug() << "Error inserting data:" << query.lastError().text();
+    QString insertUsersDataSQL = "INSERT INTO USERS (USERNAME, PASSWORD, ROLE) "
+                                 "VALUES ('admin', 'admin123', 'admin'), "
+                                 "('user', 'user123', 'user'), "
+                                 "('Jan', 'Janek123', 'user')";
+    if (!query.exec(insertUsersDataSQL)) {
+        qDebug() << "Error inserting data into USERS table:" << query.lastError().text();
     } else {
         qDebug() << "Sample users inserted!";
     }
+
+    // Create the TICKET_LIFETIME table if it doesn't exist
+    QString createTicketLifetimeTableSQL = "CREATE TABLE IF NOT EXISTS TICKET_LIFETIME ("
+                                           "ID INTEGER PRIMARY KEY AUTOINCREMENT, "
+                                           "DURATION TEXT NOT NULL, "
+                                           "STUDENT_PRICE REAL NOT NULL, "
+                                           "PENSIONER_PRICE REAL NOT NULL, "
+                                           "NORMAL_PRICE REAL NOT NULL)";
+    if (!query.exec(createTicketLifetimeTableSQL)) {
+        qDebug() << "Error creating TICKET_LIFETIME table:" << query.lastError().text();
+        return;
+    }
+
+    // Insert predefined ticket lifetimes and pricing
+    QString insertTicketLifetimeDataSQL = "INSERT INTO TICKET_LIFETIME (DURATION, STUDENT_PRICE, PENSIONER_PRICE, NORMAL_PRICE) "
+                                          "VALUES "
+                                          "('1 day', 10.00, 12.00, 15.00), "
+                                          "('3 days', 25.00, 30.00, 35.00), "
+                                          "('5 days', 40.00, 45.00, 50.00), "
+                                          "('7 days', 55.00, 60.00, 65.00), "
+                                          "('14 days', 70.00, 75.00, 80.00), "
+                                          "('30 days', 96.00, 110.00, 120.00), "
+                                          "('90 days', 250.00, 270.00, 300.00), "
+                                          "('semester', 450.00, 480.00, 500.00)";
+    if (!query.exec(insertTicketLifetimeDataSQL)) {
+        qDebug() << "Error inserting data into TICKET_LIFETIME table:" << query.lastError().text();
+    } else {
+        qDebug() << "Ticket lifetime data inserted!";
+    }
+
+    // Create the TICKETS table if it doesn't exist
+    QString createTicketsTableSQL = "CREATE TABLE IF NOT EXISTS TICKETS ("
+                                    "ID INTEGER PRIMARY KEY AUTOINCREMENT, "
+                                    "USER_ID INTEGER NOT NULL, "
+                                    "ACTIVATION_DATE TEXT NOT NULL, "
+                                    "TICKET_LIFETIME_ID INTEGER NOT NULL, "
+                                    "TICKET_TYPE TEXT NOT NULL, "
+                                    "FOREIGN KEY (USER_ID) REFERENCES USERS(ID), "
+                                    "FOREIGN KEY (TICKET_LIFETIME_ID) REFERENCES TICKET_LIFETIME(ID))";
+    if (!query.exec(createTicketsTableSQL)) {
+        qDebug() << "Error creating TICKETS table:" << query.lastError().text();
+        return;
+    }
+
+    qDebug() << "TICKET_LIFETIME and TICKETS tables created successfully!";
+}
+
+void insertNewUser(QSqlDatabase& db, const QString& username, const QString& password) {
+    QSqlQuery query(db);
+    query.prepare("INSERT INTO USERS (USERNAME, PASSWORD, ROLE) VALUES (?, ?, ?)");
+    query.addBindValue(username);
+    query.addBindValue(password);
+    query.addBindValue("user");  // Automatically assign the 'user' role
+
+    if (!query.exec()) {
+        qDebug() << "Error inserting new user:" << query.lastError().text();
+        return;
+    }
+
+    qDebug() << "New user inserted successfully!";
 }
 
 bool validateLogin(QSqlDatabase& db, const QString& username, const QString& password, QString& role) {
@@ -39,15 +102,13 @@ void showAdminDashboard(QString user_name, QSqlDatabase& db) {
 	Admin ppp (user_name + "'s dashboard", db);    
 }
 
-void showUserDashboard(QString user_name) {
+void showUserDashboard(QString user_name, QSqlDatabase& db) {
 	// acces db to user for simple user usage HERE
-	User uuu (user_name + "'s dashboard");
+	User uuu (user_name, db);
 }
-
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
 
-    // Connect to the database
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
     db.setDatabaseName("test.db");
 
@@ -57,14 +118,13 @@ int main(int argc, char *argv[]) {
     }
     qDebug() << "Database opened successfully";
 
-    // Create table and insert sample data
     createUsersTableAndInsertData(db);
 
     // Create login window
     QWidget* loginWindow = new QWidget();
     loginWindow->setWindowTitle("Login");
     loginWindow->setFixedWidth(400);
-    loginWindow->setFixedHeight(180);
+    loginWindow->setFixedHeight(220);
 
     QVBoxLayout* loginLayout = new QVBoxLayout;
     QLineEdit* usernameEdit = new QLineEdit;
@@ -79,35 +139,83 @@ int main(int argc, char *argv[]) {
     QPushButton* loginButton = new QPushButton("Login");
     loginLayout->addWidget(loginButton);
 
-    // Function to handle login validation
+    QPushButton* signUpButton = new QPushButton("Sign Up");
+    loginLayout->addWidget(signUpButton);
+
+    // Login validation function
     auto tryLogin = [&]() {
         QString username = usernameEdit->text();
         QString password = passwordEdit->text();
         QString role;
 
         if (validateLogin(db, username, password, role)) {
-            // Show dashboard based on role
             if (role == "admin") {
-                showAdminDashboard(username, db);  // Show Admin Dashboard with display data button
-            } else if (role == "user") {
-                showUserDashboard(username);  // Show User Dashboard
+                showAdminDashboard(username, db);
+            } else {
+                showUserDashboard(username, db);
             }
-
-            loginWindow->close();  // Close login window
+            loginWindow->close(); // Close login window
         } else {
             QMessageBox::warning(loginWindow, "Login Failed", "Invalid username or password.");
         }
     };
 
-    // Handle login action on button click
     QObject::connect(loginButton, &QPushButton::clicked, tryLogin);
 
-    // Detect Enter key press on username or password field
+    // Sign Up window logic
+    QObject::connect(signUpButton, &QPushButton::clicked, [&]() {
+        // Create SignUp window as a regular QWidget (not QScopedPointer)
+        QWidget* signUpWindow = new QWidget();
+        signUpWindow->setWindowTitle("Sign Up");
+        signUpWindow->setFixedWidth(400);
+        signUpWindow->setFixedHeight(240);
+
+        QVBoxLayout* signUpLayout = new QVBoxLayout;
+
+        // Dynamically allocate QLineEdit objects
+        QLineEdit* newUsernameEdit = new QLineEdit;
+        newUsernameEdit->setPlaceholderText("New Username");
+        signUpLayout->addWidget(newUsernameEdit);
+
+        QLineEdit* newPasswordEdit = new QLineEdit;
+        newPasswordEdit->setPlaceholderText("New Password");
+        newPasswordEdit->setEchoMode(QLineEdit::Password);
+        signUpLayout->addWidget(newPasswordEdit);
+
+        QPushButton* signUpSubmitButton = new QPushButton("Submit");
+        signUpLayout->addWidget(signUpSubmitButton);
+
+        QPushButton* cancelSubmitButton = new QPushButton("Cancel");
+        signUpLayout->addWidget(cancelSubmitButton);
+        
+        QObject::connect(cancelSubmitButton, &QPushButton::clicked, [&]() {
+            signUpWindow->close();  // Close the Sign Up window
+            loginWindow->show();
+        });
+        // Sign Up submit action
+        QObject::connect(signUpSubmitButton, &QPushButton::clicked, [&]() {
+            QString newUsername = newUsernameEdit->text();
+            QString newPassword = newPasswordEdit->text();
+
+            if (!newUsername.isEmpty() && !newPassword.isEmpty()) {
+                insertNewUser(db, newUsername, newPassword);
+                signUpWindow->close();  // Close the Sign Up window
+                loginWindow->show();    // Show the login window after sign up
+            } else {
+                QMessageBox::warning(signUpWindow, "Sign Up Failed", "Please fill in all fields.");
+            }
+        });
+
+        signUpWindow->setLayout(signUpLayout);
+        signUpWindow->show();
+        loginWindow->close();  // Close login window when opening sign up window
+    });
+
     QObject::connect(usernameEdit, &QLineEdit::returnPressed, tryLogin);
     QObject::connect(passwordEdit, &QLineEdit::returnPressed, tryLogin);
 
     loginWindow->setLayout(loginLayout);
     loginWindow->show();
 
-    return app.exec();  // Keep the application running
+    return app.exec();  // Run the application
 }
